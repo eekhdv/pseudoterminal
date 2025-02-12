@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <termios.h>
 
 
 int16_t setBaudRate(int32_t speed, int fd)
@@ -17,6 +18,33 @@ int16_t unlockpt(int fd)
   return ioctl(fd, TIOCSPTLCK, &(int){0});
 }
 
+int16_t setupUARTEmulation(int fd)
+{
+  struct termios tty;
+
+  if (ioctl(fd, TCGETS, &tty) < 0) {
+    perror("Error with ioctl TCGETS");
+    close(fd);
+    return -1;
+  }
+
+  tty.c_cflag &= ~PARENB;
+  tty.c_cflag &= ~CSTOPB;
+  tty.c_cflag &= ~CSIZE;
+  tty.c_cflag |= CS8;
+
+  tty.c_lflag &= ~ICANON;
+  tty.c_lflag &= ~ECHO;
+  tty.c_lflag &= ~ECHOE;
+  tty.c_lflag &= ~ECHONL;
+
+  if (ioctl(fd, TCSETS, &tty) < 0) {
+    perror("Error with ioctl TCSETS");
+    close(fd);
+    return -1;
+  }
+}
+
 int16_t connectUARTDev(int br)
 {
   int fd = open("/dev/ptmx", O_RDWR | O_NOCTTY);
@@ -26,6 +54,9 @@ int16_t connectUARTDev(int br)
     return -1;
 
   if (unlockpt(fd) == -1)
+    return -1;
+
+  if (setupUARTEmulation(fd) == -1)
     return -1;
 
   return fd;

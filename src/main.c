@@ -45,6 +45,7 @@ int main(int argc, char *argv[])
       } 
     } else if (poll_result == -1) {
         perror("Error with polling");
+        return EXIT_FAILURE;
     } 
     sleep(9);
   }
